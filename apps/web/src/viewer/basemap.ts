@@ -42,7 +42,8 @@ function addOsmRaster(viewer: Cesium.Viewer): Cesium.ImageryLayer {
 
 export async function setupIonFallback(viewer: Cesium.Viewer, notice: string): Promise<BasemapResult> {
   viewer.scene.globe.show = true;
-  const imagery = viewer.imageryLayers.add(Cesium.ImageryLayer.fromWorldImagery({}));
+  const imagery = Cesium.ImageryLayer.fromWorldImagery({});
+  viewer.imageryLayers.add(imagery);
   try {
     viewer.terrainProvider = await Cesium.createWorldTerrainAsync();
   } catch {

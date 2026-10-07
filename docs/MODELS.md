@@ -219,3 +219,33 @@ built (checkpoint 2 dust, checkpoint 3 heat and GHG).
 | CEA grid emission factor | 0.710 | tCO2/MWh | CEA CO2 Baseline Database v21.0, FY 2024-25 | [verify] |
 | NAAQS 2009 PM10 / PM2.5 limits | 100, 60 / 60, 40 | µg/m³ | CPCB NAAQS 2009 | [verify] |
 | WHO 2021 PM10 / PM2.5 guidelines | 45, 15 / 15, 5 | µg/m³ | WHO AQG 2021 | [verify] |
+
+## A.5 Quantities, programme and vehicle movement (D-020)
+
+1. **Quantities from geometry:** GFA = footprint × floors; concrete = 0.45 m³/m² × GFA (HANDOVER A.4 **[verify]**);
+   rebar = 45 kg/m² × GFA (HANDOVER A.4 **[verify]**); masonry = opaque facade area × wall thickness; glass = window
+   area × 10 mm × 2,500 kg/m³ (HANDOVER A.4 **[verify]**); excavation (bank) = footprint × basements × basement
+   storey depth; loose spoil = bank × bulking factor.
+2. **Auto programme:** excavation months = ceil(bank volume ÷ daily excavation rate ÷ working days per month);
+   structure months = ceil((floors + basements) × floor cycle days ÷ working days per month); finishing months =
+   ceil(structure months × finishing share). **User override:** total or per phase; if only the total changes,
+   phases scale proportionally (rounded, with the remainder added to structure). Values ≤ 0 are rejected; values
+   below 50% of auto raise a warning.
+3. **Vehicle movement:** loaded loads = quantity ÷ vehicle capacity (rounded up); one-way trips = 2 × loads (empty
+   return); trips/day = trips ÷ (phase months × working days per month); on-site VKT/day = trips/day × haul route
+   length (site gate to footprint centroid, from geometry); off-site t·km = mass × transport distance (A4).
+   Spoil → excavation phase; concrete and rebar → structure phase; masonry and glass → finishing phase.
+
+| Parameter | Default | Unit | Source | Status |
+|---|---|---|---|---|
+| Basements | 1 | storeys | Envelope demo default | [verify] (editable) |
+| Basement storey depth | 3.6 | m | Equal to floor-to-floor (D-004) | [verify] |
+| Bulking factor, excavated soil | to source | – | Earthworks swell factor tables | to source |
+| Transit mixer capacity | to source | m³ | Indian RMC practice | to source |
+| Tipper capacity (spoil) | to source | m³ loose | Indian practice | to source |
+| Materials truck payload | to source | t | Indian practice | to source |
+| Daily excavation rate | to source | m³/day | Contractor practice | to source |
+| RCC floor cycle time | to source | days/floor | Contractor practice | to source |
+| Finishing share of structure | 0.75 | – | HANDOVER A.2.1 ratio (9 ÷ 12 months) | [verify] |
+| Working days per month | to source | days | 6-day week practice | to source |
+| Transport distances (concrete, steel, aggregate, masonry, glass) | to source | km | Site-specific | to source |

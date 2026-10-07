@@ -1,4 +1,6 @@
-import { hashObject, totalMonths, weatherYearFor } from '@envelope/models';
+import type { SiteData } from '@envelope/data';
+import type { Assumptions, Mitigations, ProgrammeMonths, ScenarioResult } from '@envelope/models';
+import { NO_MITIGATIONS, hashObject, weatherYearFor } from '@envelope/models';
 import { create } from 'zustand';
 
 export type RibbonTab = 'project' | 'site' | 'analysis' | 'mitigation' | 'report';
@@ -13,6 +15,8 @@ export interface Scenario {
   hour: number;
   /** 1-based month of the construction programme. */
   constructionMonth: number;
+  /** Day of the calendar month shown (weather year). */
+  dayOfMonth: number;
   /** Calendar year of hourly weather used as the typical year. */
   weatherYear: number;
 }
@@ -37,6 +41,15 @@ export interface CameraView {
 }
 
 export type SiteLayerId = 'basemap' | 'building' | 'shadows';
+export type ImpactLayerId = 'dust' | 'ts' | 'utci' | 'ghg';
+export type DustMetric = 'hour' | 'day';
+
+export interface Results {
+  baseline: ScenarioResult;
+  mitigated: ScenarioResult;
+}
+
+export type PresetId = 'none' | 'cpcb' | 'best' | 'netzero';
 
 export interface UiState {
   ribbonTab: RibbonTab;
@@ -46,6 +59,7 @@ export interface UiState {
   dataSheetTab: DataSheetTab;
   playing: boolean;
   helpOpen: boolean;
+  reportOpen: boolean;
 }
 
 export interface AppState {
@@ -71,13 +85,89 @@ export interface AppState {
   openDataSheetTab: (tab: DataSheetTab) => void;
   togglePlaying: () => void;
   setHelpOpen: (open: boolean) => void;
+  setReportOpen: (open: boolean) => void;
   toggleLayer: (id: SiteLayerId) => void;
   setBasemap: (status: BasemapStatus) => void;
   setView: (view: CameraView) => void;
   setCursor: (cursor: { lat: number; lon: number } | null) => void;
   setBuildingPlaced: (placed: boolean) => void;
   setGround: (ground: AppState['ground']) => void;
+
+  // Analysis
+  siteData: SiteData | null;
+  dataState: 'loading' | 'ready' | 'error';
+  assumptions: Partial<Assumptions>;
+  mitigations: Mitigations;
+  preset: PresetId | 'custom';
+  programmeOverride: ProgrammeMonths | null;
+  results: Results | null;
+  running: boolean;
+  runMs: number | null;
+  computeError: string | null;
+  impactLayer: ImpactLayerId | null;
+  dustMetric: DustMetric;
+  layerOpacity: number;
+  showScenario: 'baseline' | 'mitigated';
+  setSiteData: (d: SiteData | null, state: AppState['dataState']) => void;
+  setAssumption: (id: keyof Assumptions, value: number | null) => void;
+  resetAssumptions: () => void;
+  setMitigation: <K extends keyof Mitigations>(id: K, value: Mitigations[K]) => void;
+  applyPreset: (preset: PresetId) => void;
+  setProgrammeOverride: (p: ProgrammeMonths | null) => void;
+  setResults: (r: Results | null, ms: number | null, error?: string | null) => void;
+  setRunning: (running: boolean) => void;
+  setImpactLayer: (id: ImpactLayerId | null) => void;
+  setDustMetric: (m: DustMetric) => void;
+  setLayerOpacity: (v: number) => void;
+  toggleShowScenario: () => void;
+  goToDay: (month: number, dayOfMonth: number) => void;
 }
+
+/** Mitigation presets (HANDOVER Appendix C, adapted to construction scope). */
+export const PRESETS: Record<PresetId, Partial<Mitigations>> = {
+  none: {},
+  cpcb: {
+    sprinkling: true,
+    windBarriers: true,
+    coverStockpiles: true,
+    greenNetting: true,
+    wheelWashing: true,
+  },
+  best: {
+    sprinkling: true,
+    pavedRoads: true,
+    windBarriers: true,
+    coverStockpiles: true,
+    greenNetting: true,
+    antiSmogGun: true,
+    wheelWashing: true,
+    highWindStop: true,
+    shadeNets: true,
+    rescheduleWork: true,
+    gridPower: true,
+    localSourcing: true,
+  },
+  netzero: {
+    sprinkling: true,
+    pavedRoads: true,
+    windBarriers: true,
+    coverStockpiles: true,
+    greenNetting: true,
+    antiSmogGun: true,
+    wheelWashing: true,
+    highWindStop: true,
+    shadeNets: true,
+    retainTrees: true,
+    rescheduleWork: true,
+    lowCarbonConcrete: true,
+    lowCarbonConcretePct: 40,
+    recycledRebar: true,
+    gridPower: true,
+    solarHybridDg: true,
+    localSourcing: true,
+    wasteReduction: true,
+  },
+};
 
 const PROJECT_NAME_KEY = 'envelope.projectName';
 export const DEFAULT_PROJECT_NAME = 'Gurugram office, construction phase';
@@ -102,7 +192,7 @@ const wrapHour = (h: number) => ((Math.round(h) % 24) + 24) % 24;
 
 export const useAppStore = create<AppState>()((set) => ({
   projectName: loadProjectName(),
-  scenario: { hour: 14, constructionMonth: 7, weatherYear: weatherYearFor(new Date()) },
+  scenario: { hour: 14, constructionMonth: 7, dayOfMonth: 15, weatherYear: weatherYearFor(new Date()) },
   ui: {
     ribbonTab: 'project',
     leftPanelOpen: true,
@@ -111,6 +201,7 @@ export const useAppStore = create<AppState>()((set) => ({
     dataSheetTab: 'climate',
     playing: false,
     helpOpen: false,
+    reportOpen: false,
   },
   layers: { basemap: true, building: true, shadows: true },
   basemap: { state: 'loading', kind: null, notice: null },
@@ -127,7 +218,7 @@ export const useAppStore = create<AppState>()((set) => ({
   stepHour: (delta) => set((s) => ({ scenario: { ...s.scenario, hour: wrapHour(s.scenario.hour + delta) } })),
   setConstructionMonth: (month) =>
     set((s) => ({
-      scenario: { ...s.scenario, constructionMonth: Math.min(Math.max(1, Math.round(month)), totalMonths()) },
+      scenario: { ...s.scenario, constructionMonth: Math.max(1, Math.round(month)) },
     })),
   setRibbonTab: (tab) => set((s) => ({ ui: { ...s.ui, ribbonTab: tab } })),
   toggleLeftPanel: () => set((s) => ({ ui: { ...s.ui, leftPanelOpen: !s.ui.leftPanelOpen } })),
@@ -136,12 +227,51 @@ export const useAppStore = create<AppState>()((set) => ({
   openDataSheetTab: (tab) => set((s) => ({ ui: { ...s.ui, dataSheetOpen: true, dataSheetTab: tab } })),
   togglePlaying: () => set((s) => ({ ui: { ...s.ui, playing: !s.ui.playing } })),
   setHelpOpen: (open) => set((s) => ({ ui: { ...s.ui, helpOpen: open } })),
+  setReportOpen: (open) => set((s) => ({ ui: { ...s.ui, reportOpen: open } })),
   toggleLayer: (id) => set((s) => ({ layers: { ...s.layers, [id]: !s.layers[id] } })),
   setBasemap: (basemap) => set({ basemap }),
   setView: (view) => set({ view }),
   setCursor: (cursor) => set({ cursor }),
   setBuildingPlaced: (buildingPlaced) => set({ buildingPlaced }),
   setGround: (ground) => set({ ground }),
+
+  siteData: null,
+  dataState: 'loading',
+  assumptions: {},
+  // Demo default: the mitigated scenario starts from the CPCB minimum dust measures.
+  mitigations: { ...NO_MITIGATIONS, ...PRESETS.cpcb },
+  preset: 'cpcb',
+  programmeOverride: null,
+  results: null,
+  running: false,
+  runMs: null,
+  computeError: null,
+  impactLayer: 'dust',
+  dustMetric: 'day',
+  layerOpacity: 0.75,
+  showScenario: 'mitigated',
+  setSiteData: (siteData, dataState) => set({ siteData, dataState }),
+  setAssumption: (id, value) =>
+    set((s) => {
+      const next = { ...s.assumptions };
+      if (value === null) delete next[id];
+      else next[id] = value;
+      return { assumptions: next };
+    }),
+  resetAssumptions: () => set({ assumptions: {} }),
+  setMitigation: (id, value) =>
+    set((s) => ({ mitigations: { ...s.mitigations, [id]: value }, preset: 'custom' })),
+  applyPreset: (preset) => set({ mitigations: { ...NO_MITIGATIONS, ...PRESETS[preset] }, preset }),
+  setProgrammeOverride: (programmeOverride) => set({ programmeOverride }),
+  setResults: (results, runMs, computeError = null) => set({ results, runMs, computeError, running: false }),
+  setRunning: (running) => set({ running }),
+  setImpactLayer: (impactLayer) => set({ impactLayer }),
+  setDustMetric: (dustMetric) => set({ dustMetric }),
+  setLayerOpacity: (layerOpacity) => set({ layerOpacity }),
+  toggleShowScenario: () =>
+    set((s) => ({ showScenario: s.showScenario === 'baseline' ? 'mitigated' : 'baseline' })),
+  goToDay: (constructionMonth, dayOfMonth) =>
+    set((s) => ({ scenario: { ...s.scenario, constructionMonth, dayOfMonth } })),
 }));
 
 export const scenarioHash = (scenario: Scenario) => hashObject(scenario);

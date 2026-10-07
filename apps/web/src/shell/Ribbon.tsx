@@ -9,12 +9,13 @@ import {
   Table24Regular,
   ZoomFit24Regular,
 } from '@fluentui/react-icons';
-import { formatHour, phaseForMonth, totalMonths } from '@envelope/models';
+import { formatHour, phaseForMonth, programmeTotal, toSchedule } from '@envelope/models';
 import type { RibbonTab } from '../store/appStore';
 import { useAppStore } from '../store/appStore';
 import { shell } from '../theme/theme';
 import { viewerCommands } from '../viewer/controller';
 import { demoBuilding } from '../viewer/site';
+import { DayGroup, PresetsGroup, ProgrammeGroup, ReportGroup } from './RibbonGroups';
 import { RibbonButton, RibbonGroup } from './RibbonParts';
 
 const useStyles = makeStyles({
@@ -81,32 +82,35 @@ function ProjectTab() {
   const toggleInspector = useAppStore((st) => st.toggleInspector);
   const toggleDataSheet = useAppStore((st) => st.toggleDataSheet);
   return (
-    <RibbonGroup label="Panels">
-      <RibbonButton
-        testId="ctl-toggle-left-panel"
-        label="Layers"
-        tooltip="Show or hide the Layers and Mitigation panel"
-        icon={<PanelLeft24Regular />}
-        pressed={ui.leftPanelOpen}
-        onClick={toggleLeftPanel}
-      />
-      <RibbonButton
-        testId="ctl-toggle-inspector"
-        label="Inspector"
-        tooltip="Show or hide the Inspector"
-        icon={<PanelRight24Regular />}
-        pressed={ui.inspectorOpen}
-        onClick={toggleInspector}
-      />
-      <RibbonButton
-        testId="ctl-toggle-datasheet"
-        label="Data sheet"
-        tooltip="Show or hide the Data sheet"
-        icon={<Table24Regular />}
-        pressed={ui.dataSheetOpen}
-        onClick={toggleDataSheet}
-      />
-    </RibbonGroup>
+    <>
+      <ProgrammeGroup />
+      <RibbonGroup label="Panels">
+        <RibbonButton
+          testId="ctl-toggle-left-panel"
+          label="Layers"
+          tooltip="Show or hide the Layers and Mitigation panel"
+          icon={<PanelLeft24Regular />}
+          pressed={ui.leftPanelOpen}
+          onClick={toggleLeftPanel}
+        />
+        <RibbonButton
+          testId="ctl-toggle-inspector"
+          label="Inspector"
+          tooltip="Show or hide the Inspector"
+          icon={<PanelRight24Regular />}
+          pressed={ui.inspectorOpen}
+          onClick={toggleInspector}
+        />
+        <RibbonButton
+          testId="ctl-toggle-datasheet"
+          label="Data sheet"
+          tooltip="Show or hide the Data sheet"
+          icon={<Table24Regular />}
+          pressed={ui.dataSheetOpen}
+          onClick={toggleDataSheet}
+        />
+      </RibbonGroup>
+    </>
   );
 }
 
@@ -118,7 +122,10 @@ function AnalysisTab() {
   const stepHour = useAppStore((st) => st.stepHour);
   const togglePlaying = useAppStore((st) => st.togglePlaying);
   const setConstructionMonth = useAppStore((st) => st.setConstructionMonth);
-  const { phase } = phaseForMonth(constructionMonth);
+  const results = useAppStore((st) => st.results);
+  const effective = results?.baseline.programme.effective;
+  const total = effective ? programmeTotal(effective) : 24;
+  const { phase } = phaseForMonth(constructionMonth, effective ? toSchedule(effective) : undefined);
   return (
     <>
       <RibbonGroup label="Hour of day">
@@ -166,21 +173,23 @@ function AnalysisTab() {
           <div className={s.sliderHead}>
             <label htmlFor="month-slider">Month</label>
             <span className={s.sliderValue}>
-              {constructionMonth} of {totalMonths()} · {phase.label}
+              {Math.min(constructionMonth, total)} of {total} · {phase.label}
             </span>
           </div>
           <Slider
             id="month-slider"
             size="small"
             min={1}
-            max={totalMonths()}
+            max={total}
             step={1}
-            value={constructionMonth}
+            value={Math.min(constructionMonth, total)}
             data-testid="ctl-month-slider"
             onChange={(_, d) => setConstructionMonth(d.value)}
           />
         </div>
       </RibbonGroup>
+      <ProgrammeGroup compact />
+      <DayGroup />
     </>
   );
 }
@@ -211,11 +220,6 @@ function SiteTab() {
   );
 }
 
-function EmptyTab({ text }: { text: string }) {
-  const s = useStyles();
-  return <div className={s.empty}>{text}</div>;
-}
-
 export function Ribbon() {
   const s = useStyles();
   const tab = useAppStore((st) => st.ui.ribbonTab);
@@ -238,8 +242,8 @@ export function Ribbon() {
         {tab === 'project' && <ProjectTab />}
         {tab === 'site' && <SiteTab />}
         {tab === 'analysis' && <AnalysisTab />}
-        {tab === 'mitigation' && <EmptyTab text="No mitigation measures in this build yet." />}
-        {tab === 'report' && <EmptyTab text="Report export is not available in this build yet." />}
+        {tab === 'mitigation' && <PresetsGroup />}
+        {tab === 'report' && <ReportGroup onExport={() => useAppStore.getState().setReportOpen(true)} />}
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import { Add16Regular, Subtract16Regular } from '@fluentui/react-icons';
 import { useAppStore } from '../store/appStore';
 import { shell } from '../theme/theme';
 import { viewerCommands } from './controller';
+import { Legend } from './Legend';
 
 const useStyles = makeStyles({
   topBar: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 2 },
@@ -84,6 +85,17 @@ export function ViewportOverlays() {
   const heading = view?.headingDeg ?? 0;
   const scale = view ? niceScale(view.metresPerPixel) : null;
   const loading = basemap.state === 'loading' || !placed;
+  const siteData = useAppStore((st) => st.siteData);
+  const dataState = useAppStore((st) => st.dataState);
+  const stale = siteData
+    ? Object.values(siteData.provenance).filter((p) => p.status === 'cached' || p.status === 'snapshot')
+    : [];
+  const dataNotice =
+    dataState === 'error'
+      ? 'Site data could not be loaded. Dust and heat need weather data; GHG results are still shown.'
+      : stale.length
+        ? `Cached data from ${new Date(Math.min(...stale.map((p) => Date.parse(p.fetchedAt ?? '') || Date.now()))).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} (${stale.map((p) => p.source).join(', ')})`
+        : null;
 
   return (
     <>
@@ -97,9 +109,9 @@ export function ViewportOverlays() {
           {basemap.state === 'loading' ? 'Loading basemap…' : 'Placing the building on the ground…'}
         </div>
       ) : (
-        basemap.notice && (
+        (basemap.notice || dataNotice) && (
           <div className={s.status} role="status" data-testid="viewport-notice">
-            {basemap.notice}
+            {[basemap.notice, dataNotice].filter(Boolean).join(' ')}
           </div>
         )
       )}
@@ -147,6 +159,7 @@ export function ViewportOverlays() {
         </div>
       </div>
 
+      <Legend />
       {scale && (
         <div className={s.scale} data-testid="scale-bar" title="Scale at the site centre">
           {formatMetres(scale.metres)}

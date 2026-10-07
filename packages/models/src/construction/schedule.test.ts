@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calendarMonthFor, phaseForMonth, totalMonths, weatherYearFor } from './construction';
+import { calendarMonthFor, phaseForMonth, totalMonths, weatherYearFor } from './schedule';
 
 describe('construction month → weather-year calendar month', () => {
   it('starts in January by default and wraps every 12 months', () => {

@@ -1,4 +1,4 @@
-import { buildingStateForMonth, calendarMonthFor } from '@envelope/models';
+import { buildingStateForMonth, calendarMonthFor, toSchedule } from '@envelope/models';
 import { makeStyles } from '@fluentui/react-components';
 import * as Cesium from 'cesium';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
@@ -9,6 +9,7 @@ import type { BasemapResult } from './basemap';
 import { basemapRequestFromUrl, fetchIonToken, setupBasemap, setupIonFallback } from './basemap';
 import { plotClipping, renderSite } from './buildingEntities';
 import { viewerCommands } from './controller';
+import { activeLayer, renderImpact, sampleField } from './impactLayer';
 import type { SiteGeometry } from './site';
 import { siteGeometry } from './site';
 
@@ -80,14 +81,23 @@ export function SiteViewer() {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Cesium.Viewer | null>(null);
   const dsRef = useRef<Cesium.CustomDataSource | null>(null);
+  const impactRef = useRef<Cesium.CustomDataSource | null>(null);
   const basemapRef = useRef<BasemapResult | null>(null);
   const sphereRef = useRef<Cesium.BoundingSphere | null>(null);
   const geo = useMemo(() => siteGeometry(), []);
   const [ground, setGround] = useState<number | null>(null);
   const [probe, setProbe] = useState<{ x: number; y: number; lat: number; lon: number } | null>(null);
+  const probeRef = useRef<{ lat: number; lon: number } | null>(null);
 
   const scenario = useAppStore((st) => st.scenario);
   const layers = useAppStore((st) => st.layers);
+  const results = useAppStore((st) => st.results);
+  const impactLayer = useAppStore((st) => st.impactLayer);
+  const dustMetric = useAppStore((st) => st.dustMetric);
+  const opacity = useAppStore((st) => st.layerOpacity);
+  const showScenario = useAppStore((st) => st.showScenario);
+  const shown = results ? results[showScenario] : null;
+  const layer = useMemo(() => activeLayer(shown, impactLayer, dustMetric), [shown, impactLayer, dustMetric]);
 
   // Create the viewer once.
   useEffect(() => {
@@ -118,6 +128,9 @@ export function SiteViewer() {
     const ds = new Cesium.CustomDataSource('site');
     void viewer.dataSources.add(ds);
     dsRef.current = ds;
+    const impact = new Cesium.CustomDataSource('impact');
+    void viewer.dataSources.add(impact);
+    impactRef.current = impact;
 
     // Start over the city; the fly-in to the plot follows once the ground height is known.
     viewer.camera.setView({
@@ -262,11 +275,16 @@ export function SiteViewer() {
         const lat = Cesium.Math.toDegrees(c.latitude);
         const lon = Cesium.Math.toDegrees(c.longitude);
         setProbe({ x: pending.x, y: pending.y, lat, lon });
+        probeRef.current = { lat, lon };
         useAppStore.getState().setCursor({ lat, lon });
       });
     }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
 
     viewerCommands.attach({
+      capture: () => {
+        viewer.render();
+        return viewer.scene.canvas.toDataURL('image/jpeg', 0.85);
+      },
       fitToSite: () => flyToSite(1.2),
       resetNorth: () => {
         const sphere = sphereRef.current;
@@ -299,8 +317,22 @@ export function SiteViewer() {
   useEffect(() => {
     const ds = dsRef.current;
     if (!ds || ground === null) return;
-    renderSite(ds, geo, ground, buildingStateForMonth(scenario.constructionMonth, geo.spec.floors));
-  }, [geo, ground, scenario.constructionMonth]);
+    const schedule = shown ? toSchedule(shown.programme.effective) : undefined;
+    renderSite(
+      ds,
+      geo,
+      ground,
+      buildingStateForMonth(scenario.constructionMonth, geo.spec.floors, schedule),
+      layer?.ghg,
+    );
+  }, [geo, ground, scenario.constructionMonth, shown, layer]);
+
+  // Impact layer draped over the tiles and the plot.
+  useEffect(() => {
+    const ds = impactRef.current;
+    if (!ds || ground === null || !shown) return;
+    renderImpact(ds, shown, layer, geo, ground, opacity);
+  }, [geo, ground, shown, layer, opacity]);
 
   // Sun position (and so shadows) follows the hour and month.
   useEffect(() => {
@@ -342,6 +374,17 @@ export function SiteViewer() {
             Lon
           </span>
           {probe.lon.toFixed(5)}°
+          {shown &&
+            layer?.field &&
+            (() => {
+              const v = sampleField(shown, layer.field, probe.lon, probe.lat, geo.origin);
+              return v === null ? null : (
+                <div data-testid="probe-value">
+                  <span className={s.probeLabel}>{layer.scale.title}</span>
+                  {v.toFixed(1)} {layer.scale.unit}
+                </div>
+              );
+            })()}
         </div>
       )}
     </>

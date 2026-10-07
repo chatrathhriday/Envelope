@@ -1,4 +1,5 @@
 import type { BuildingState, LonLat } from '@envelope/models';
+import { bufferConvex, fromLocalEN, toLocalEN } from '@envelope/models';
 import * as Cesium from 'cesium';
 import type { SiteGeometry } from './site';
 
@@ -28,7 +29,9 @@ export function renderSite(
   geo: SiteGeometry,
   groundM: number,
   state: BuildingState,
+  ghg?: { facades: string[]; roof: string },
 ) {
+  // Entities get auto ids: re-adding fixed ids inside suspendEvents left stale geometry (B-005).
   ds.entities.suspendEvents();
   ds.entities.removeAll();
   const { spec } = geo;
@@ -39,7 +42,6 @@ export function renderSite(
 
   // Bare-soil plot (with a hole over the pit while excavating).
   ds.entities.add({
-    id: 'plot',
     polygon: {
       hierarchy: new Cesium.PolygonHierarchy(
         ll(geo.plotLL),
@@ -52,7 +54,6 @@ export function renderSite(
   });
 
   ds.entities.add({
-    id: 'hoarding',
     wall: {
       positions: llAt(closed(geo.plotLL), groundM),
       minimumHeights: closed(geo.plotLL).map(() => groundM),
@@ -64,7 +65,6 @@ export function renderSite(
 
   if (excavating && pitDepth > 0) {
     ds.entities.add({
-      id: 'pit-floor',
       polygon: {
         hierarchy: new Cesium.PolygonHierarchy(ll(geo.footprintLL)),
         height: groundM - pitDepth,
@@ -72,7 +72,6 @@ export function renderSite(
       },
     });
     ds.entities.add({
-      id: 'pit-walls',
       wall: {
         positions: llAt(closed(geo.footprintLL), groundM),
         minimumHeights: closed(geo.footprintLL).map(() => groundM - pitDepth),
@@ -88,7 +87,6 @@ export function renderSite(
 
   if (cladFloors > 0) {
     ds.entities.add({
-      id: 'cladding',
       polygon: {
         hierarchy: new Cesium.PolygonHierarchy(ll(geo.footprintLL)),
         height: groundM,
@@ -100,7 +98,6 @@ export function renderSite(
   }
   if (state.floorsBuilt > cladFloors) {
     ds.entities.add({
-      id: 'frame',
       polygon: {
         hierarchy: new Cesium.PolygonHierarchy(ll(geo.footprintLL)),
         height: cladTop,
@@ -110,10 +107,35 @@ export function renderSite(
       },
     });
   }
+  // GHG layer: each facade and the roof coloured by embodied kgCO2e/m², drawn 0.15 m proud of the frame.
+  if (ghg && state.floorsBuilt > 0) {
+    const outer = bufferConvex(
+      geo.footprintLL.map((p) => toLocalEN(p, geo.origin)),
+      0.15,
+    ).map((p) => fromLocalEN(p, geo.origin));
+    outer.forEach((p, i) => {
+      const q = outer[(i + 1) % outer.length]!;
+      ds.entities.add({
+        wall: {
+          positions: llAt([p, q], groundM),
+          minimumHeights: [groundM, groundM],
+          maximumHeights: [frameTop, frameTop],
+          material: Cesium.Color.fromCssColorString(ghg.facades[i] ?? '#999999'),
+        },
+      });
+    });
+    ds.entities.add({
+      polygon: {
+        hierarchy: new Cesium.PolygonHierarchy(ll(outer)),
+        height: frameTop + 0.1,
+        material: Cesium.Color.fromCssColorString(ghg.roof),
+      },
+    });
+  }
+
   // Slab edges make each storey readable.
   for (let i = 1; i <= state.floorsBuilt; i++) {
     ds.entities.add({
-      id: `slab-${i}`,
       polyline: {
         positions: llAt(closed(geo.footprintLL), groundM + i * f + 0.02),
         width: 1.5,

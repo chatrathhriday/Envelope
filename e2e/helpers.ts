@@ -25,6 +25,14 @@ export async function openFresh(page: Page): Promise<void> {
     return s?.getState().buildingPlaced === true;
   });
   await page.getByTestId('viewport-loading').waitFor({ state: 'detached' });
+  // Model results (programme, KPIs, day buttons) must be in before controls are tested.
+  await page.waitForFunction(
+    () =>
+      (window as unknown as { __envelope?: { getState: () => { results: unknown } } }).__envelope?.getState()
+        .results != null,
+    null,
+    { timeout: 60_000 },
+  );
   // Fly-in lasts 2 s.
   await page.waitForTimeout(2500);
 }
@@ -34,7 +42,10 @@ export function storeSignature(page: Page): Promise<string> {
   return page.evaluate(() => {
     const store = (window as unknown as { __envelope?: { getState: () => unknown } }).__envelope;
     if (!store) throw new Error('window.__envelope is not exposed (dev build required)');
-    return JSON.stringify(store.getState(), (_k, v: unknown) => (typeof v === 'function' ? undefined : v));
+    // Skip functions and typed arrays (model grids), which would make the signature huge.
+    return JSON.stringify(store.getState(), (_k, v: unknown) =>
+      typeof v === 'function' || ArrayBuffer.isView(v) ? undefined : v,
+    );
   });
 }
 

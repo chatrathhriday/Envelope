@@ -10,5 +10,8 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "jsthermalcomfort": "^1.4.0"
   }
 }

@@ -10,7 +10,6 @@ export interface DataSourceInfo {
 
 export const DATA_SOURCES: readonly DataSourceInfo[] = [
   { id: 'open-meteo-archive', label: 'Weather', attribution: 'Weather data by Open-Meteo.com (CC BY 4.0)' },
-  { id: 'open-meteo-forecast', label: 'Forecast', attribution: 'Weather data by Open-Meteo.com (CC BY 4.0)' },
   {
     id: 'open-meteo-air-quality',
     label: 'Air quality',

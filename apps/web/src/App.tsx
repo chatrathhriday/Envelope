@@ -1,5 +1,7 @@
 import { makeStyles } from '@fluentui/react-components';
+import { useAnalysis } from './compute/useAnalysis';
 import { usePlayback, useShortcuts } from './hooks/useShortcuts';
+import { ReportDialog } from './shell/ReportDialog';
 import { DataSheet } from './shell/DataSheet';
 import { HelpDialog } from './shell/HelpDialog';
 import { Inspector } from './shell/Inspector';
@@ -21,6 +23,7 @@ export function App() {
   const leftPanelOpen = useAppStore((st) => st.ui.leftPanelOpen);
   const inspectorOpen = useAppStore((st) => st.ui.inspectorOpen);
   useShortcuts();
+  useAnalysis();
   usePlayback();
 
   return (
@@ -37,6 +40,7 @@ export function App() {
       </div>
       <StatusBar />
       <HelpDialog />
+      <ReportDialog />
     </div>
   );
 }

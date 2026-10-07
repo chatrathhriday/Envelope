@@ -3,6 +3,8 @@ export interface ViewerCommands {
   fitToSite: () => void;
   resetNorth: () => void;
   zoom: (direction: 1 | -1) => void;
+  /** JPEG data URL of the current 3D view, for report figures. */
+  capture: () => string | null;
 }
 
 let active: ViewerCommands | null = null;
@@ -14,4 +16,5 @@ export const viewerCommands: ViewerCommands & { attach: (c: ViewerCommands | nul
   fitToSite: () => active?.fitToSite(),
   resetNorth: () => active?.resetNorth(),
   zoom: (direction) => active?.zoom(direction),
+  capture: () => active?.capture() ?? null,
 };

@@ -27,6 +27,12 @@ const SHORTCUTS: [string, string][] = [
   ['←', 'Previous hour'],
   ['→', 'Next hour'],
   ['F', 'Fit to site'],
+  ['D', 'Dust layer'],
+  ['H', 'Surface temperature layer'],
+  ['U', 'Worker heat stress (UTCI) layer'],
+  ['G', 'GHG on envelope layer'],
+  ['M', 'Map shows baseline / mitigated'],
+  ['Ctrl+E', 'Export report'],
 ];
 
 export function HelpDialog() {

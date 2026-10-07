@@ -15,12 +15,27 @@ export function useShortcuts() {
   const stepHour = useAppStore((st) => st.stepHour);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {
+        useAppStore.getState().setReportOpen(true);
+        e.preventDefault();
+        return;
+      }
       if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || isTyping(e.target)) return;
       if (e.key === 'ArrowLeft') {
         stepHour(-1);
         e.preventDefault();
       } else if (e.key === 'ArrowRight') {
         stepHour(1);
+        e.preventDefault();
+      } else if (['d', 'h', 'u', 'g'].includes(e.key.toLowerCase())) {
+        const id = ({ d: 'dust', h: 'ts', u: 'utci', g: 'ghg' } as const)[
+          e.key.toLowerCase() as 'd' | 'h' | 'u' | 'g'
+        ];
+        const st = useAppStore.getState();
+        st.setImpactLayer(st.impactLayer === id ? null : id);
+        e.preventDefault();
+      } else if (e.key === 'm' || e.key === 'M') {
+        useAppStore.getState().toggleShowScenario();
         e.preventDefault();
       } else if (e.key === 'f' || e.key === 'F') {
         viewerCommands.fitToSite();

@@ -1,7 +1,7 @@
 import { Tooltip, makeStyles } from '@fluentui/react-components';
 import { DATA_SOURCES } from '@envelope/data';
 import type { FreshnessState } from '@envelope/data';
-import { calendarMonthFor, formatHour, phaseForMonth, totalMonths } from '@envelope/models';
+import { calendarMonthFor, formatHour, phaseForMonth, toSchedule, totalMonths } from '@envelope/models';
 import { useAppStore } from '../store/appStore';
 import { shell } from '../theme/theme';
 
@@ -62,10 +62,32 @@ export function StatusBar() {
   const cursor = useAppStore((st) => st.cursor);
   const view = useAppStore((st) => st.view);
   const basemap = useAppStore((st) => st.basemap);
-  const { phase } = phaseForMonth(constructionMonth);
+  const results = useAppStore((st) => st.results);
+  const eff = results?.baseline.programme.effective;
+  const total = eff ? eff.excavation + eff.structure + eff.finishing : totalMonths();
+  const { phase } = phaseForMonth(constructionMonth, eff ? toSchedule(eff) : undefined);
   const calMonth = MONTHS[calendarMonthFor(constructionMonth) - 1];
-  // Freshness per source is wired to the data layer in checkpoint 2; until then nothing is loaded.
-  const state: FreshnessState = 'not-loaded';
+  const siteData = useAppStore((st) => st.siteData);
+  const dataState = useAppStore((st) => st.dataState);
+  const runMs = useAppStore((st) => st.runMs);
+  const running = useAppStore((st) => st.running);
+  const PROV_KEY = {
+    'open-meteo-archive': 'weather',
+    'open-meteo-forecast': null,
+    'open-meteo-air-quality': 'airQuality',
+    overpass: 'osm',
+  } as const;
+  const stateOf = (id: keyof typeof PROV_KEY): { state: FreshnessState; when: string } => {
+    const k = PROV_KEY[id];
+    if (!k) return { state: 'not-loaded', when: 'not used in this build (Live mode deferred)' };
+    if (!siteData) return { state: dataState === 'error' ? 'error' : 'loading', when: '' };
+    const p = siteData.provenance[k];
+    const st: FreshnessState = p.status === 'live' ? 'live' : p.status === 'unavailable' ? 'error' : 'cached';
+    return {
+      state: st,
+      when: p.fetchedAt ? `fetched ${new Date(p.fetchedAt).toLocaleString('en-IN')}` : 'no data',
+    };
+  };
 
   return (
     <footer className={s.root} data-testid="panel-statusbar">
@@ -74,11 +96,12 @@ export function StatusBar() {
       </span>
       <Tooltip content="Sun position and shadows use this date and hour" relationship="description">
         <span className={s.item} data-testid="status-hour" tabIndex={0}>
-          15 {calMonth} {weatherYear}, {formatHour(hour)} IST
+          {results ? results.baseline.selected.dateLabel : `15 ${calMonth} ${weatherYear}`},{' '}
+          {formatHour(hour)} IST
         </span>
       </Tooltip>
       <span className={s.item} data-testid="status-month">
-        Month {constructionMonth}/{totalMonths()} · {phase.label}
+        Month {Math.min(constructionMonth, total)}/{total} · {phase.label}
       </span>
       <span className={s.item} data-testid="status-camera">
         {view ? `Camera ${view.rangeM.toLocaleString('en-IN')} m · ${view.headingDeg}°` : 'Camera –'}
@@ -88,17 +111,28 @@ export function StatusBar() {
         {basemap.kind ? BASEMAP_TEXT[basemap.kind] : 'Basemap loading'}
       </span>
       <span className={s.item}>
-        {DATA_SOURCES.map((src) => (
-          <Tooltip key={src.id} content={`${src.label}: ${STATE_TEXT[state]}`} relationship="description">
-            <span className={s.source} data-testid={`status-source-${src.id}`} tabIndex={0}>
-              <span className={s.dot} style={{ backgroundColor: STATE_COLOUR[state] }} />
-              {src.label}
-            </span>
-          </Tooltip>
-        ))}
+        {DATA_SOURCES.map((src) => {
+          const { state, when } = stateOf(src.id);
+          return (
+            <Tooltip
+              key={src.id}
+              content={`${src.label}: ${STATE_TEXT[state]} ${when}`}
+              relationship="description"
+            >
+              <span className={s.source} data-testid={`status-source-${src.id}`} tabIndex={0}>
+                <span className={s.dot} style={{ backgroundColor: STATE_COLOUR[state] }} />
+                {src.label}
+              </span>
+            </Tooltip>
+          );
+        })}
       </span>
       <span className={s.item} data-testid="status-runtime">
-        Model run: –
+        {running
+          ? 'Model running…'
+          : runMs !== null
+            ? `Model run ${runMs.toLocaleString('en-IN')} ms`
+            : 'Model run: –'}
       </span>
     </footer>
   );
