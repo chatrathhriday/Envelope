@@ -1,5 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { phaseForMonth, totalMonths } from './construction';
+import { calendarMonthFor, phaseForMonth, totalMonths, weatherYearFor } from './construction';
+
+describe('construction month → weather-year calendar month', () => {
+  it('starts in January by default and wraps every 12 months', () => {
+    expect(calendarMonthFor(1)).toBe(1);
+    expect(calendarMonthFor(7)).toBe(7);
+    expect(calendarMonthFor(12)).toBe(12);
+    expect(calendarMonthFor(13)).toBe(1);
+    expect(calendarMonthFor(24)).toBe(12);
+  });
+
+  it('honours a different start month: start October, month 4 → January', () => {
+    expect(calendarMonthFor(4, 10)).toBe(1);
+  });
+
+  it('weather year is the last complete calendar year', () => {
+    expect(weatherYearFor(new Date('2026-10-07T00:00:00Z'))).toBe(2025);
+  });
+});
 
 describe('construction schedule', () => {
   it('totals 24 months by default', () => {

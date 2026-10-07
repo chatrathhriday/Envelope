@@ -6,3 +6,5 @@ Bugs found during checkpoint testing. Fix before moving to the next checkpoint.
 |---|---|---|---|---|---|---|
 | B-001 | 0 | Claude | Run `pnpm dev` from the desktop preview tool | API on 8787, web on 5173 | API server bound 5173 because the tool sets `PORT` | Fixed (D-014) |
 | B-002 | 0 | Claude | Load the app in dev | No console errors | "Keyborg instance … disposed incorrectly" from StrictMode double mount | Fixed (D-013) |
+| B-003 | 1 | Claude | Load the site with Google tiles and shadows on | Clean ground and roof | Moiré shadow acne on tiles and roof | Fixed (D-018) |
+| B-004 | 1 | Claude | Load the app after adding Cesium | Workers and assets load from /cesium | vite-plugin-static-copy v4 kept full source paths, so /cesium/* returned index.html | Fixed (`rename: { stripBase: 4 }`) |

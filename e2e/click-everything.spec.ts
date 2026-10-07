@@ -10,6 +10,15 @@ import { openFresh, storeSignature, trackConsoleErrors, visibleSignature } from 
 
 const RIBBON_TABS = ['project', 'site', 'analysis', 'mitigation', 'report'] as const;
 
+/** Some controls only change something from a non-default state; set that state up first. */
+const PRECONDITIONS: Record<string, (page: Page) => Promise<void>> = {
+  // Fit to site from the fitted view is a no-op, so move the camera away first.
+  'ctl-fit-site': async (page) => {
+    await page.getByTestId('ctl-zoom-out').click();
+    await page.waitForTimeout(500);
+  },
+};
+
 async function visibleControlIds(page: Page): Promise<string[]> {
   return page.$$eval('[data-testid^="ctl-"]', (els) =>
     els.filter((el) => el.getClientRects().length > 0).map((el) => el.getAttribute('data-testid') as string),
@@ -45,10 +54,10 @@ async function operate(page: Page, id: string): Promise<void> {
 }
 
 test('every control changes state and the screen', async ({ page }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(480_000);
   const errors = trackConsoleErrors(page);
   const controls = await discover(page);
-  expect(controls.size, 'controls discovered').toBeGreaterThanOrEqual(14);
+  expect(controls.size, 'controls discovered').toBeGreaterThanOrEqual(28);
 
   for (const [id, tab] of controls) {
     await openFresh(page);
@@ -60,6 +69,7 @@ test('every control changes state and the screen', async ({ page }) => {
       const sibling = el.locator('xpath=..').locator('[role="tab"][aria-selected="false"]').first();
       await sibling.click();
     }
+    await PRECONDITIONS[id]?.(page);
 
     const storeBefore = await storeSignature(page);
     const screenBefore = await visibleSignature(page);

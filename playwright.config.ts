@@ -15,7 +15,17 @@ export default defineConfig({
     toHaveScreenshot: { maxDiffPixelRatio: 0.02 },
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1600, height: 900 } } },
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1600, height: 900 },
+        // Hardware WebGL on Windows; headless Chromium otherwise falls back to slow SwiftShader.
+        launchOptions: {
+          args: process.platform === 'win32' ? ['--use-angle=d3d11', '--ignore-gpu-blocklist'] : [],
+        },
+      },
+    },
   ],
   webServer: {
     command: 'pnpm dev',

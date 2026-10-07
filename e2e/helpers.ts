@@ -10,12 +10,23 @@ export function trackConsoleErrors(page: Page): string[] {
   return errors;
 }
 
-/** Loads the app with clean browser storage. */
+/**
+ * Loads the app with clean browser storage and waits until the building is placed and the
+ * fly-in has finished. `?basemap=none` keeps e2e runs from spending Google root-tile sessions.
+ */
 export async function openFresh(page: Page): Promise<void> {
-  await page.goto('/');
-  await page.evaluate(() => window.localStorage.clear());
-  await page.reload();
+  // Each test starts with empty storage; clear what a previous load in the same test saved.
+  if (page.url().startsWith('http')) await page.evaluate(() => window.localStorage.clear());
+  await page.goto('/?basemap=none');
   await page.getByTestId('panel-ribbon').waitFor();
+  await page.waitForFunction(() => {
+    const s = (window as unknown as { __envelope?: { getState: () => { buildingPlaced: boolean } } })
+      .__envelope;
+    return s?.getState().buildingPlaced === true;
+  });
+  await page.getByTestId('viewport-loading').waitFor({ state: 'detached' });
+  // Fly-in lasts 2 s.
+  await page.waitForTimeout(2500);
 }
 
 /** Store state without functions, as JSON. */

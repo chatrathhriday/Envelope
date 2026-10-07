@@ -23,12 +23,12 @@ test.describe('app shell', () => {
 
   test('arrow keys step the hour and the status bar follows', async ({ page }) => {
     await openFresh(page);
-    await expect(page.getByTestId('status-hour')).toHaveText('14:00 IST');
+    await expect(page.getByTestId('status-hour')).toContainText('14:00 IST');
     await page.locator('body').press('ArrowRight');
-    await expect(page.getByTestId('status-hour')).toHaveText('15:00 IST');
+    await expect(page.getByTestId('status-hour')).toContainText('15:00 IST');
     await page.locator('body').press('ArrowLeft');
     await page.locator('body').press('ArrowLeft');
-    await expect(page.getByTestId('status-hour')).toHaveText('13:00 IST');
+    await expect(page.getByTestId('status-hour')).toContainText('13:00 IST');
   });
 
   test('project name is editable and survives a reload', async ({ page }) => {
@@ -52,6 +52,35 @@ test.describe('app shell', () => {
   test('visual snapshot of the shell', async ({ page }) => {
     await openFresh(page);
     await page.mouse.move(0, 0);
-    await expect(page).toHaveScreenshot('shell.png');
+    // The WebGL viewport and the dates derived from today vary between runs.
+    await expect(page).toHaveScreenshot('shell.png', {
+      mask: [
+        page.getByTestId('cesium-container'),
+        page.getByTestId('status-hour'),
+        page.getByTestId('scale-bar'),
+      ],
+    });
+  });
+
+  test('3D site: building placed, F fits to site, compass resets north', async ({ page }) => {
+    await openFresh(page);
+    await expect(page.getByTestId('status-basemap')).toHaveText('No basemap');
+    await expect(page.getByTestId('status-camera')).toContainText('· 30°');
+    await page.getByTestId('ctl-compass').click();
+    await expect(page.getByTestId('status-camera')).toContainText('· 0°');
+    await page.getByTestId('ctl-zoom-out').click();
+    const zoomed = await page.getByTestId('status-camera').textContent();
+    await page.locator('body').press('f');
+    await expect(page.getByTestId('status-camera')).not.toHaveText(zoomed ?? '');
+    await expect(page.getByTestId('status-camera')).toContainText('· 30°');
+  });
+
+  test('hover probe shows coordinates near the site', async ({ page }) => {
+    await openFresh(page);
+    const box = (await page.getByTestId('cesium-container').boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(page.getByTestId('probe')).toBeVisible();
+    await expect(page.getByTestId('status-cursor')).toContainText('28.40');
+    await expect(page.getByTestId('status-cursor')).toContainText('77.08');
   });
 });

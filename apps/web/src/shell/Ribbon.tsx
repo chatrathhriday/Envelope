@@ -7,11 +7,14 @@ import {
   Pause24Regular,
   Play24Regular,
   Table24Regular,
+  ZoomFit24Regular,
 } from '@fluentui/react-icons';
 import { formatHour, phaseForMonth, totalMonths } from '@envelope/models';
 import type { RibbonTab } from '../store/appStore';
 import { useAppStore } from '../store/appStore';
 import { shell } from '../theme/theme';
+import { viewerCommands } from '../viewer/controller';
+import { demoBuilding } from '../viewer/site';
 import { RibbonButton, RibbonGroup } from './RibbonParts';
 
 const useStyles = makeStyles({
@@ -54,6 +57,14 @@ const useStyles = makeStyles({
     color: shell.textMuted,
   },
   sliderValue: { color: '#242424', fontVariantNumeric: 'tabular-nums' },
+  siteInfo: {
+    alignSelf: 'center',
+    paddingLeft: '6px',
+    paddingRight: '10px',
+    fontSize: '12px',
+    lineHeight: '18px',
+    color: shell.textMuted,
+  },
 });
 
 const TABS: { id: RibbonTab; label: string }[] = [
@@ -174,6 +185,32 @@ function AnalysisTab() {
   );
 }
 
+function SiteTab() {
+  const s = useStyles();
+  const geo = demoBuilding.site;
+  return (
+    <>
+      <RibbonGroup label="View">
+        <RibbonButton
+          testId="ctl-fit-site"
+          label="Fit to site"
+          tooltip="Fit to site (F)"
+          icon={<ZoomFit24Regular />}
+          onClick={() => viewerCommands.fitToSite()}
+        />
+      </RibbonGroup>
+      <RibbonGroup label="Site">
+        <div className={s.siteInfo}>
+          <div>{geo.label}</div>
+          <div className={s.sliderValue}>
+            {geo.lat.toFixed(5)}° N, {geo.lon.toFixed(5)}° E
+          </div>
+        </div>
+      </RibbonGroup>
+    </>
+  );
+}
+
 function EmptyTab({ text }: { text: string }) {
   const s = useStyles();
   return <div className={s.empty}>{text}</div>;
@@ -199,7 +236,7 @@ export function Ribbon() {
       </TabList>
       <div className={s.body} role="toolbar" aria-label={`${tab} ribbon`} data-testid="ribbon-body">
         {tab === 'project' && <ProjectTab />}
-        {tab === 'site' && <EmptyTab text="No site tools in this build yet." />}
+        {tab === 'site' && <SiteTab />}
         {tab === 'analysis' && <AnalysisTab />}
         {tab === 'mitigation' && <EmptyTab text="No mitigation measures in this build yet." />}
         {tab === 'report' && <EmptyTab text="Report export is not available in this build yet." />}

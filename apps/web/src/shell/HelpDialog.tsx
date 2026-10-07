@@ -26,6 +26,7 @@ const useStyles = makeStyles({
 const SHORTCUTS: [string, string][] = [
   ['←', 'Previous hour'],
   ['→', 'Next hour'],
+  ['F', 'Fit to site'],
 ];
 
 export function HelpDialog() {

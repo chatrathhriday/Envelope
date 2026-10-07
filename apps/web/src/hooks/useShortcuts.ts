@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useAppStore } from '../store/appStore';
+import { viewerCommands } from '../viewer/controller';
 
 function isTyping(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -20,6 +21,9 @@ export function useShortcuts() {
         e.preventDefault();
       } else if (e.key === 'ArrowRight') {
         stepHour(1);
+        e.preventDefault();
+      } else if (e.key === 'f' || e.key === 'F') {
+        viewerCommands.fitToSite();
         e.preventDefault();
       }
     };
