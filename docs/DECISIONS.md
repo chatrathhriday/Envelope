@@ -1,0 +1,22 @@
+# DECISIONS.md — Envelope
+
+Non-obvious decisions, newest last. "You decide" = the user delegated the choice and the HANDOVER §2 default was
+taken.
+
+| ID | Date | Decision | Why |
+|---|---|---|---|
+| D-001 | 2026-10-07 | App name **Envelope**. Wordmark is text only: "Env" in green, "elope" in white, on a dark title bar. | User's choice (HANDOVER §2 Q10 and branding answer). |
+| D-002 | 2026-10-07 | Demo site: a vacant plot in **Gurugram, Haryana**; exact lat/lng chosen and checked on imagery in checkpoint 1. | You decide (Q1 default: high dust, high heat, NCR regulations). |
+| D-003 | 2026-10-07 | **Construction phase only** for all three modules. Dust = construction emissions + susceptibility; Heat = construction-site surface heat and worker heat stress (UTCI); GHG = construction-stage carbon A1–A5. Dropped: 5R1C energy model, operational EPI, rooftop PV, PV soiling, refrigerants, anthropogenic cooling heat, operational mitigations (cool roof, HVAC, LED, glazing). | User: "our product is measuring all those impacts during the construction phase"; then chose "Construction only". |
+| D-004 | 2026-10-07 | Building: parametric office, 12 floors × 3.6 m, 45 m × 30 m footprint, 40% WWR, RCC frame, pre-construction stage. | You decide (Q2 default). |
+| D-005 | 2026-10-07 | Basemap: Google Photorealistic 3D Tiles **via Cesium ion**; fallback Cesium World Terrain + OSM Buildings; Google Maps key only as a backup. | You decide (Q4 default). |
+| D-006 | 2026-10-07 | LLM: Gemini (Google AI Studio) primary, Groq fallback, deterministic template writer last. Model IDs from env. | You decide (Q5 default). |
+| D-007 | 2026-10-07 | Report: PDF + DOCX, neutral template with the Envelope wordmark and placeholder client details. Generic Indian submission with an indicative compliance matrix (NAAQS 2009, MoEFCC/CPCB dust measures, EIA 2006 item 8). | You decide (Q6, Q7 defaults). ECSBC applies to operation, so it appears only as a note under D-003. |
+| D-008 | 2026-10-07 | **Deadline ≈ 1 day, team of 4.** HANDOVER's 9 phases are compressed into 4 checkpoints, each ending in tests and a user check. Deferred: SoilGrids, OpenAQ, NASA POWER, Monte Carlo, split/swipe compare, glTF/IFC import, location search, project file open/save. DOCX is the first item cut if time runs short. | User answer to Q9. Unbuilt features ship no controls (CLAUDE.md §2). |
+| D-009 | 2026-10-07 | Demo runs on a laptop with offline snapshot mode. | You decide (Q8 default). |
+| D-010 | 2026-10-07 | Brand green `#2F9E5B` for the wordmark (4.7:1 on title bar `#1E2125`). Interactive fills use a darker step, `#237A45` (5.3:1 with white text), because `#2F9E5B` with white 12–13 px text is only 3.4:1. Green is the single accent colour. | You decide (brand green); user chose green as the accent. WCAG AA for small text. |
+| D-011 | 2026-10-07 | The **Cesium ion token is the one credential that reaches the browser**: Cesium streams tiles from the client. It is never bundled or committed; `/api/config` serves it at runtime. The token is scoped to the needed assets and URL-restricted to `http://localhost:5173` on ion. All other keys stay on the server. | Exception to CLAUDE.md §2 "secrets never reach the browser", with the narrowest scope ion allows. |
+| D-012 | 2026-10-07 | Internal packages are consumed as TypeScript source (`exports` → `src/index.ts`), with no build step. Vite and tsx compile them directly. | Faster iteration; fewer moving parts for a 1-day build. |
+| D-013 | 2026-10-07 | No `<StrictMode>` in `main.tsx`. Its dev double-mount makes Fluent's keyborg log "Keyborg instance … disposed incorrectly" on every load, which would break the zero-console-errors gate. | Known Fluent UI v9 dev-mode issue; no production impact. |
+| D-014 | 2026-10-07 | The API server port variable is `SERVER_PORT` (default 8787), not `PORT`. | The desktop preview tool sets `PORT=5173` for the web server, which made the API server take the web port. |
+| D-015 | 2026-10-07 | Site time zone is Asia/Kolkata (IST, no DST), so the UI shows local hours as "HH:00 IST". Storage is UTC. | CLAUDE.md §5. |
