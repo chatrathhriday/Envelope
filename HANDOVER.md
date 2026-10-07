@@ -3,7 +3,7 @@
 > **How to use this file:** put `CLAUDE.md` and `HANDOVER.md` in the root of an empty repo, open Claude Code
 > there, and paste the "Kickoff prompt" in §1 as your first message. Claude Code will ask its questions,
 > then build phase by phase, stopping after each phase for you to test.
-> Replace `<APP_NAME>` once you choose a name.
+> App name chosen: **Envelope** (docs/DECISIONS.md D-001).
 
 ---
 
@@ -12,7 +12,7 @@
 ```
 Read CLAUDE.md and HANDOVER.md fully before doing anything.
 
-We are building <APP_NAME>: a 3D environmental impact analysis web app for a hackathon demo. A company
+We are building Envelope: a 3D environmental impact analysis web app for a hackathon demo. A company
 sees its building as a 3D model on Google Photorealistic 3D Tiles at its real location, analyses Dust,
 Heat and Greenhouse-gas impact as toggleable heat-map layers driven by free live data APIs, toggles
 mitigation measures and sees results change live, then exports a regulator-ready Environmental
@@ -46,7 +46,7 @@ console page and settings to use; never print or commit keys.
 | 7 | Which regulator or rating is the report aimed at (SPCB, SEIAA/EIA, GRIHA, IGBC, BRSR)? | Generic Indian submission with an indicative compliance matrix covering NAAQS, MoEFCC/CPCB dust measures, EIA 2006 item 8, ECSBC 2024 |
 | 8 | Where does the demo run: your laptop only, or hosted (Vercel/Render)? Expected Wi-Fi at the venue? | Laptop, with offline snapshot mode |
 | 9 | Team size, deadline, and who tests? | Assume 2–4 people, ~10 days, user tests after every phase |
-| 10 | Preferred name (from the shortlist) | `<APP_NAME>` placeholder until chosen |
+| 10 | Preferred name (from the shortlist) | Chosen: **Envelope** |
 
 ---
 
@@ -158,7 +158,7 @@ README with setup steps, final visual review against CLAUDE.md §6.
 
 ---
 
-## 6. Name shortlist (pick one, then replace `<APP_NAME>`)
+## 6. Name shortlist (chosen: Envelope)
 
 Halo · Envelop · Airshed · Vayu · Ambit · Siteglass · Plume · Prithvi
 (Check domain and trademark availability before you commit. "Plume" overlaps with Plume Labs, an air-quality brand.)
