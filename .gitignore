@@ -12,3 +12,4 @@ blob-report/
 .vite/
 ~$*
 .DS_Store
+*.zip
