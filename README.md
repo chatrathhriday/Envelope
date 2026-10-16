@@ -50,4 +50,8 @@ pnpm lint && pnpm typecheck
 pnpm snapshot:demo   # refresh fixtures/demo from the live APIs
 ```
 
-Project rules and architecture: `CLAUDE.md`. Decisions and known issues: `docs/DECISIONS.md`, `docs/BUGS.md`.
+Decisions and known issues: `docs/DECISIONS.md`, `docs/BUGS.md`.
+
+## How this was built
+
+Built with AI assistance (Claude) for implementation speed; the idea, design decisions, testing and final calls are mine.
